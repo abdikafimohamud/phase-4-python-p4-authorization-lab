@@ -1,56 +1,60 @@
-#!/usr/bin/env python3
-
-from random import randint, choice as rc
-
-from faker import Faker
-
-from app import app
-from models import db, Article, User
-
-fake = Faker()
+from app import app, db, bcrypt
+from models import User, Article
 
 with app.app_context():
+    db.drop_all()
+    db.create_all()
 
-    print("Deleting all records...")
-    Article.query.delete()
-    User.query.delete()
+    # Create a test user
+    user = User(
+        username="testuser",
+        password_hash=bcrypt.generate_password_hash("password123").decode("utf-8")
+    )
+    db.session.add(user)
 
-    fake = Faker()
+    # Public Articles
+    public1 = Article(
+        author="Admin",
+        title="Welcome to Our Blog",
+        content="This article is free for everyone.",
+        preview="Intro to our blog",
+        minutes_to_read=2,
+        is_member_only=False,
+        user=user
+    )
 
-    print("Creating users...")
-    users = []
-    usernames = []
-    for i in range(25):
+    public2 = Article(
+        author="Admin",
+        title="Getting Started",
+        content="Here are some tips to get started.",
+        preview="Helpful guide for new users",
+        minutes_to_read=3,
+        is_member_only=False,
+        user=user
+    )
 
-        username = fake.first_name()
-        while username in usernames:
-            username = fake.first_name()
-        
-        usernames.append(username)
+    # Member-Only Articles
+    member1 = Article(
+        author="Admin",
+        title="Exclusive Member Insights",
+        content="Only members can see this detailed article.",
+        preview="Premium content preview",
+        minutes_to_read=5,
+        is_member_only=True,
+        user=user
+    )
 
-        user = User(username=username)
-        users.append(user)
+    member2 = Article(
+        author="Admin",
+        title="Advanced Tips & Tricks",
+        content="A collection of powerful strategies for our members.",
+        preview="Advanced strategies preview",
+        minutes_to_read=6,
+        is_member_only=True,
+        user=user
+    )
 
-    db.session.add_all(users)
-
-    print("Creating articles...")
-    articles = []
-    for i in range(100):
-        content = fake.paragraph(nb_sentences=8)
-        preview = content[:25] + '...'
-        
-        article = Article(
-            author=fake.name(),
-            title=fake.sentence(),
-            content=content,
-            preview=preview,
-            minutes_to_read=randint(1,20),
-            is_member_only = rc([True, False, False])
-        )
-
-        articles.append(article)
-
-    db.session.add_all(articles)
-    
+    db.session.add_all([public1, public2, member1, member2])
     db.session.commit()
-    print("Complete.")
+
+    print("Database seeded successfully!")
